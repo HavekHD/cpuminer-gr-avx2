@@ -1,4 +1,4 @@
-AC_INIT([cpuminer-opt-gr], [1.2.4])
+AC_INIT([cpuminer-opt], [3.22.2])
 
 AC_PREREQ([2.59c])
 AC_CANONICAL_SYSTEM
@@ -93,6 +93,14 @@ then
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM(,[asm ("vpaddd %ymm0, %ymm1, %ymm2");])],
       AC_DEFINE(USE_AVX2, 1, [Define to 1 if AVX2 assembly is available.])
       AC_MSG_RESULT(yes)
+      AC_MSG_CHECKING(whether we can compile AVX512 code)
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM(,[asm ("vpaddd %zmm0, %zmm1, %zmm2{%k1}");])],
+        AC_DEFINE(USE_AVX512, 1, [Define to 1 if AVX512 assembly is available.])
+        AC_MSG_RESULT(yes)
+      ,
+        AC_MSG_RESULT(no)
+        AC_MSG_WARN([The assembler does not support the AVX512 instruction set.])
+      )
     ,
       AC_MSG_RESULT(no)
       AC_MSG_WARN([The assembler does not support the AVX2 instruction set.])
@@ -115,11 +123,6 @@ fi
 
 LDFLAGS="$PTHREAD_LDFLAGS $LDFLAGS"
 # PTHREAD_LIBS="$PTHREAD_LIBS"
-
-# Numa
-if test "x$have_win32" != "xtrue" ; then
-   AC_CHECK_LIB([numa], [numa_max_node], NUMA_LIBS="-lnuma",[])
-fi
 
 AC_MSG_CHECKING(whether __uint128_t is supported)
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([static __uint128_t i = 100;])],
@@ -190,8 +193,6 @@ AC_SUBST(JANSSON_LIBS)
 AC_SUBST(PTHREAD_FLAGS)
 AC_SUBST(PTHREAD_LIBS)
 AC_SUBST(WS2_LIBS)
-
-AC_SUBST(NUMA_LIBS)
 
 AC_CONFIG_FILES([
 	Makefile

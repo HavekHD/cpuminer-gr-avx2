@@ -1,11 +1,13 @@
-Instructions for compiling cpuminer-gr for Windows.
+Instructions for compiling cpuminer-opt for Windows.
 
-The instructions may be out of date. Please consult the wiki for
+These intructions are out of date. Please consult the wiki for
 the latest:
+
+https://github.com/JayDDee/cpuminer-opt/wiki/Compiling-from-source
 
 Windows compilation using Visual Studio is not supported. Mingw64 is
 used on a Linux system (bare metal or virtual machine) to cross-compile
-cpuminer-gr executable binaries for Windows.
+cpuminer-opt executable binaries for Windows.
 
 These instructions were written for Debian and Ubuntu compatible distributions
 but should work on other major distributions as well. However some of the
@@ -38,7 +40,7 @@ $ mkdir $HOME/usr/lib
    version available in the repositories.
 
 Download the following source code packages from their respective and
-respected download locations, copy them to ~/usr/lib/ and uncompress them. 
+respected download locations, copy them to $HOME/usr/lib/ and uncompress them. 
 
 openssl: https://github.com/openssl/openssl/releases
 
@@ -62,11 +64,8 @@ $ make
 Make may fail with an ld error, just ensure libcrypto-1_1-x64.dll is created.
 
 curl:
-Download from git, do not use archives in release.
 
-# sudo apt-get install autoconf automake libtool perl
-$ autoreconf -fi
-$ ./configure --with-winssl --with-winidn --with-schannel --host=x86_64-w64-mingw32
+$ ./configure --with-winssl --with-winidn --host=x86_64-w64-mingw32
 $ make
 
 gmp:
@@ -82,20 +81,19 @@ Define some local variables to point to local library.
 
 $ export LOCAL_LIB="$HOME/usr/lib"
 
-$ export CONFIGURE_ARGS="--with-curl=$LOCAL_LIB/curl --with-crypto=$LOCAL_LIB/openssl --host=x86_64-w64-mingw32"
+$ export LDFLAGS="-L$LOCAL_LIB/curl/lib/.libs -L$LOCAL_LIB/gmp/.libs -L$LOCAL_LIB/openssl"
 
-$ export MINGW_LIB="/usr/x86_64-w64-mingw32/lib"
+$ export CONFIGURE_ARGS="--with-curl=$LOCAL_LIB/curl --with-crypto=$LOCAL_LIB/openssl --host=x86_64-w64-mingw32"
 
 Adjust for gcc version:
 
 $ export GCC_MINGW_LIB="/usr/lib/gcc/x86_64-w64-mingw32/9.3-win32"
-                                                        10-win32
 
 Create a release directory and copy some dll files previously built. This can be done outside of cpuminer-opt and only needs to be done once. If the release directory is in cpuminer-opt directory it needs to be recreated every time a source package is decompressed.
 
 $ mkdir release
-$ cp $MINGW_LIB/zlib1.dll release/
-$ cp $MINGW_LIB/libwinpthread-1.dll release/
+$ cp /usr/x86_64-w64-mingw32/lib/zlib1.dll release/
+$ cp /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll release/
 $ cp $GCC_MINGW_LIB/libstdc++-6.dll release/
 $ cp $GCC_MINGW_LIB/libgcc_s_seh-1.dll release/
 $ cp $LOCAL_LIB/openssl/libcrypto-1_1-x64.dll release/
@@ -104,54 +102,57 @@ $ cp $LOCAL_LIB/curl/lib/.libs/libcurl-4.dll release/
 The following steps need to be done every time a new source package is
 opened.
 
-5. Download cpuminer-gr
+5. Download cpuminer-opt
 
 Download the latest source code package of cpumuner-opt to your desired
 location. .zip or .tar.gz, your choice.
 
-https://github.com/WyvernTKC/cpuminer-gr-avx2/releases
+https://github.com/JayDDee/cpuminer-opt/releases
 
-$ git clone https://github.com/WyvernTKC/cpuminer-gr-avx2 cpuminer-gr
-
-Decompress and change to the cpuminer-gr directory.
+Decompress and change to the cpuminer-opt directory.
 
 6. compile
 
 Create a link to the locally compiled version of gmp.h
 
-$ export LDFLAGS="-L$LOCAL_LIB/curl/lib/.libs -L$LOCAL_LIB/gmp/.libs -L$LOCAL_LIB/openssl"
+$ ln -s $LOCAL_LIB/gmp-version/gmp.h ./gmp.h
 
-$ rm ./gmp.h 2>/dev/null
-$ ln -s $LOCAL_LIB/gmp/gmp.h ./gmp.h
-
-$ make distclean
-$ rm -f config.status
 $ ./autogen.sh
 
 Configure the compiler for the CPU architecture of the host machine:
 
-$ export DCFLAGS="-fno-common -D_WIN32_WINNT=0x0601"
+CFLAGS="-O3 -march=native -Wall" ./configure $CONFIGURE_ARGS
 
-For GCC-10+:
-CFLAGS="-O3 -march=native -mtune=native ${DCFLAGS}" \
-CXXFLAGS="$CFLAGS -std=c++20 -Wno-ignored-attributes" \
-./configure ${CONFIGURE_ARGS}
+or cross compile for a specific CPU architecture:
 
-For GCC-8 && GCC-9:
-CFLAGS="-O3 -march=native -mtune=native ${DCFLAGS}" \
-CXXFLAGS="$CFLAGS -std=c++2a -fconcepts -Wno-ignored-attributes" \
-./configure ${CONFIGURE_ARGS}
+CFLAGS="-O3 -march=znver1 -Wall" ./configure $CONFIGURE_ARGS
+
+This will compile for AMD Ryzen.
+
+You can compile more generically for a set of specific CPU features if you know what features you want:
+
+CFLAGS="-O3 -maes -msse4.2 -Wall" ./configure $CONFIGURE_ARGS
+
+This will compile for an older CPU that does not have AVX.
 
 You can find several examples in README.txt
 
+If you have a CPU with more than 64 threads and Windows 7 or higher you can enable the CPU Groups feature by adding the following to CFLAGS:
+
+"-D_WIN32_WINNT=0x0601"
+
 Once you have run configure successfully run the compiler with n CPU threads:
 
-$ make -j $(nproc)
+$ make -j n
 
 Copy cpuminer.exe to the release directory, compress and copy the release directory to a Windows system and run cpuminer.exe from the command line.
 
 Run cpuminer
 
-In a command windows change directories to the unzipped release folder. to get a list of all options:
+In a command windows change directories to the unzipped release folder. To get a list of all options:
 
 cpuminer.exe --help
+
+Command options are specific to where you mine. Refer to the pool's instructions on how to set them.
+
+

@@ -4,85 +4,127 @@
 # during develpment. However the information contained may provide compilation
 # tips to users.
 
-#!/bin/bash
-#
-# This script is not intended for users, it is only used for compile testing
-# during develpment. However the information contained may provide compilation
-# tips to users.
+rm cpuminer-avx512-sha-vaes cpuminer-avx512 cpuminer-avx2 cpuminer-avx cpuminer-aes-sse42 cpuminer-sse42 cpuminer-ssse3 cpuminer-sse2 cpuminer-zen cpuminer-zen3 cpuminer-zen4 cpuminer-alderlake > /dev/null
 
-rm -r bin/unix 2>/dev/null
-rm cpuminer 2>/dev/null
-mkdir -p bin/unix/ 2>/dev/null
+# AVX512 SHA VAES: Intel Core Icelake, Rocketlake
+make distclean || echo clean
+rm -f config.status
+./autogen.sh || echo done
+CFLAGS="-O3 -march=icelake-client -Wall -fno-common" ./configure --with-curl
+# Rocketlake needs gcc-11
+#CFLAGS="-O3 -march=rocketlake -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-avx512-sha-vaes
 
-DCFLAGS="-Wall -fno-common -Wextra -Wno-missing-field-initializers"
-DCXXFLAGS="-Wno-ignored-attributes"
+# AVX256 SHA VAES: Intel Core Alderlake, needs gcc-12
+#make clean || echo clean
+#rm -f config.status
+#./autogen.sh || echo done
+#CFLAGS="-O3 -march=alderlake -Wall -fno-common" ./configure --with-curl
+#make -j 8
+#strip -s cpuminer
+#mv cpuminer cpuminer-alderlake
 
-# 1 - Architecture
-# 2 - Output suffix
-# 3 - Additional options
-compile() {
+# Zen4 AVX512 SHA VAES
+make clean || echo clean
+rm -f config.status
+# znver3 needs gcc-11, znver4 ?
+#CFLAGS="-O3 -march=znver4 -Wall -fno-common " ./configure --with-curl
+CFLAGS="-O3 -march=znver3 -mavx512f -mavx512dq -mavx512bw -mavx512vl -Wall -fno-common " ./configure --with-curl
+#CFLAGS="-O3 -march=znver2 -mvaes -mavx512f -mavx512dq -mavx512bw -mavx512vl -Wall -fno-common " ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-zen4
 
-  echo "Compile: $@" 1>&2
-  make distclean || echo clean
-  rm -f config.status
-  ./autogen.sh || echo done
-  CFLAGS="-O3 -march=${1} ${3} ${DCFLAGS}" \
-  CXXFLAGS="$CFLAGS -std=c++20 ${DCXXFLAGS}" \
-  ./configure --with-curl
-  make -j $(nproc)
-  strip -s cpuminer
-  mv cpuminer bin/unix/${4}/cpuminer-${2}
+# Zen3 AVX2 SHA VAES
+make clean || echo clean
+rm -f config.status
+#CFLAGS="-O3 -march=znver2 -mvaes -fno-common " ./configure --with-curl
+CFLAGS="-O3 -march=znver3 -fno-common " ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-zen3
 
-}
+# AVX512 AES: Intel Core HEDT Sylake-X, Cascadelake
+make clean || echo clean
+rm -f config.status
+CFLAGS="-O3 -march=skylake-avx512 -maes -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-avx512
 
+# AVX2 SHA VAES: Intel Alderlake, AMD Zen3
+make clean || echo done
+rm -f config.status
+# vaes doesn't include aes
+CFLAGS="-O3 -maes -mavx2 -msha -mvaes -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-avx2-sha-vaes
 
-#Non-AES
-# Generic SSE2
-compile "x86-64" "sse2" "-msse"
+# AVX2 SHA AES: AMD Zen1
+make clean || echo done
+rm -f config.status
+#CFLAGS="-O3 -march=znver1 -maes -Wall -fno-common" ./configure --with-curl
+CFLAGS="-O3 -maes -mavx2 -msha -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-avx2-sha
 
-# Core2 SSSE3
-compile "core2" "ssse3"
-
-# Nehalem SSE4.2
-compile "corei7" "sse42"
-
-
-#AES
-# Westmere SSE4.2 AES
-compile "westmere" "aes-sse42" "-maes"
-
-# Sandybridge AVX AES
-compile "corei7-avx" "avx" "-maes"
-
-
-#AVX2+
-# Haswell AVX2 AES
+# AVX2 AES: Intel Haswell..Cometlake
+make clean || echo clean
+rm -f config.status
 # GCC 9 doesn't include AES with core-avx2
-compile "core-avx2" "avx2" "-maes"
+CFLAGS="-O3 -march=core-avx2 -maes -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-avx2
 
-# AMD Zen1 AVX2 SHA
-compile "znver1" "zen" "-mtune=znver1"
+# AVX AES: Intel Sandybridge, Ivybridge
+make clean || echo clean
+rm -f config.status
+CFLAGS="-O3 -march=corei7-avx -maes -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-avx
 
-# AMD Zen2 AVX2 SHA
-compile "znver2" "zen2" "-mtune=znver2"
+# SSE4.2 AES: Intel Westmere, most Pentium & Celeron
+make clean || echo clean
+rm -f config.status
+CFLAGS="-O3 -march=westmere -maes -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-aes-sse42
 
-# AMD Zen3 AVX2 SHA VAES
-# GCC 10
-compile "znver3" "zen3" "-mtune=znver3"
-# GCC 9
-# compile "znver2" "zen3" "-mvaes -mtune=znver2"
+# SSE4.2: Intel Nehalem
+make clean || echo clean
+rm -f config.status
+CFLAGS="-O3 -march=corei7 -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-sse42
 
-# Icelake AVX512 SHA VAES
-compile "icelake-client" "avx512-sha-vaes" "-mtune=intel"
+# SSSE3: Intel Core2
+make clean || echo clean
+rm -f config.status
+CFLAGS="-O3 -march=core2 -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-ssse3
 
-# Rocketlake AVX512 SHA AES
-compile "cascadelake" "avx512-sha" "-msha -mtune=intel"
+# SSE2
+make clean || echo clean
+rm -f config.status
+CFLAGS="-O3 -msse2 -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
+mv cpuminer cpuminer-sse2
 
-# Slylake-X AVX512 AES
-compile "skylake-avx512" "avx512" "-mtune=intel"
+# Native to host CPU
+make clean || echo done
+rm -f config.status
+CFLAGS="-O3 -march=native -Wall -fno-common" ./configure --with-curl
+make -j 8
+strip -s cpuminer
 
-# Alder Lake
-# GCC 11
-# compile "alderlake" "avx2-sha-vaes" "-mtune=alderlake"
-# GCC < 10
-compile "skylake" "avx2-sha-vaes" "-mvaes -msha -mtune=intel"

@@ -36,6 +36,7 @@
 
 #include "sph_echo.h"
 
+#if !defined(__AES__)
 
 #ifdef __cplusplus
 extern "C"{
@@ -1030,3 +1031,4 @@ sph_echo512_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
 #ifdef __cplusplus
 }
 #endif 
+#endif  // !AES
